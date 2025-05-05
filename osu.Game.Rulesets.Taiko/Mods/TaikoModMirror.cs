@@ -13,7 +13,7 @@ namespace osu.Game.Rulesets.Taiko.Mods
     {
         public override string Name => "Mirror";
         public override string Acronym => "MR";
-        public override LocalisableString Description => "Notes come from the left instead of the right.";
+        public override LocalisableString Description => "Notes are flipped horizontally.";
         public override double ScoreMultiplier => 1;
 
         public void ApplyToDrawableRuleset(DrawableRuleset<TaikoHitObject> drawableRuleset)
