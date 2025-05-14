@@ -160,7 +160,8 @@ namespace osu.Game.Rulesets.Taiko
                         new TaikoModAlternate(),
                         new TaikoModConstantSpeed(),
                         new TaikoModColourShift(),
-                        new TaikoModTripletify()
+                        new TaikoModTripletify(),
+                        new TaikoModSequential()
                     };
 
                 case ModType.Automation:
