@@ -41,7 +41,7 @@ namespace osu.Game.Rulesets.Taiko.Mods
 
         public void ApplyToBeatmap(IBeatmap beatmap)
         {
-            if (!Interpolate.Value || beatmap.ControlPointInfo.EffectPoints.Count == 0) return;
+            if (!Interpolate.Value) return;
 
             List<(double, EffectControlPoint)> toAdd = [];
             foreach (var tp in beatmap.ControlPointInfo.EffectPoints)
