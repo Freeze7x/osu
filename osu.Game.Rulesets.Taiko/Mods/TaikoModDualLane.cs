@@ -25,14 +25,6 @@ namespace osu.Game.Rulesets.Taiko.Mods
         public override LocalisableString Description => @"dual lane";
         public override double ScoreMultiplier => 0.75;
 
-        [SettingSource("Fade Distance", "Adjust how hidden the hitobjects are.", SettingControlType = typeof(MultiplierSettingsSlider))]
-        public BindableNumber<double> HiddenMultiplier { get; } = new(1)
-        {
-            MinValue = 0.4f,
-            MaxValue = 1.4f,
-            Precision = 0.01f,
-        };
-
         /// <summary>
         /// How far away from the hit target should hitobjects start to fade out.
         /// Range: [0, 1]

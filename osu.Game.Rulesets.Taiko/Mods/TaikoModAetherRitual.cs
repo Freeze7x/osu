@@ -26,7 +26,7 @@ namespace osu.Game.Rulesets.Taiko.Mods
 
         public override string Name => "Aether Ritual";
 
-        public override string Acronym => "AR";
+        public override string Acronym => "8S";
 
         public override double ScoreMultiplier => 0.75;
 
