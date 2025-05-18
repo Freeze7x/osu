@@ -184,6 +184,7 @@ namespace osu.Game.Rulesets.Taiko
                         new TaikoModLinedColtMod(),
                         new ModStaticBPM(),
                         new TaikoModDualLane(),
+                        new TaikoModApproachDifferent(),
                     };
 
                 case ModType.System:
