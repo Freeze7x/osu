@@ -183,6 +183,7 @@ namespace osu.Game.Rulesets.Taiko
                         new TaikoModAetherRitual(),
                         new TaikoModLinedColtMod(),
                         new ModStaticBPM(),
+                        new TaikoModDualLane(),
                     };
 
                 case ModType.System:
