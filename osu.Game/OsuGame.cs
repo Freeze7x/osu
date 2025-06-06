@@ -188,7 +188,7 @@ namespace osu.Game
         /// <summary>
         /// Whether the back button is currently displayed.
         /// </summary>
-        private readonly IBindable<bool> backButtonVisibility = new Bindable<bool>();
+        private readonly IBindable<bool> backButtonVisibility = new BindableBool();
 
         IBindable<LocalUserPlayingState> ILocalUserPlayInfo.PlayingState => UserPlayingState;
 
@@ -742,7 +742,7 @@ namespace osu.Game
                 }
             }, validScreens: new[]
             {
-                typeof(SongSelect), typeof(IHandlePresentBeatmap)
+                typeof(SongSelect), typeof(Screens.SelectV2.SongSelect), typeof(IHandlePresentBeatmap)
             });
         }
 
@@ -845,7 +845,7 @@ namespace osu.Game
             // which may not match the score, and thus crash.
             IEnumerable<Type> validScreens =
                 Beatmap.Value.BeatmapInfo.Equals(databasedBeatmap) && Ruleset.Value.Equals(databasedScore.ScoreInfo.Ruleset)
-                    ? new[] { typeof(SongSelect), typeof(DailyChallenge) }
+                    ? new[] { typeof(SongSelect), typeof(Screens.SelectV2.SongSelect), typeof(DailyChallenge) }
                     : Array.Empty<Type>();
 
             PerformFromScreen(screen =>
@@ -1105,9 +1105,11 @@ namespace osu.Game
                                 {
                                     Anchor = Anchor.BottomLeft,
                                     Origin = Anchor.BottomLeft,
-                                    Action = () => ScreenFooter.OnBack?.Invoke(),
+                                    Action = handleBackButton,
                                 },
                                 logoContainer = new Container { RelativeSizeAxes = Axes.Both },
+                                // TODO: what is this? why is this?
+                                // TODO: this is being screen scaled even though it's probably AN OVERLAY.
                                 footerBasedOverlayContent = new Container
                                 {
                                     Depth = -1,
@@ -1119,15 +1121,9 @@ namespace osu.Game
                                     RelativeSizeAxes = Axes.Both,
                                     Child = ScreenFooter = new ScreenFooter(backReceptor)
                                     {
+                                        // TODO: this is really really weird and should not exist.
                                         RequestLogoInFront = inFront => ScreenContainer.ChangeChildDepth(logoContainer, inFront ? float.MinValue : 0),
-                                        OnBack = () =>
-                                        {
-                                            if (!(ScreenStack.CurrentScreen is IOsuScreen currentScreen))
-                                                return;
-
-                                            if (!((Drawable)currentScreen).IsLoaded || (currentScreen.AllowUserExit && !currentScreen.OnBackButton()))
-                                                ScreenStack.Exit();
-                                        }
+                                        BackButtonPressed = handleBackButton
                                     },
                                 },
                             }
@@ -1306,6 +1302,16 @@ namespace osu.Game
 
             // Importantly, this should be run after binding PostNotification to the import handlers so they can present the import after game startup.
             handleStartupImport();
+        }
+
+        private void handleBackButton()
+        {
+            // TODO: this is SUPER SUPER bad.
+            // It can potentially exit the wrong screen if screens are not loaded yet.
+            // ScreenFooter / ScreenBackButton should be aware of which screen it is currently being handled by.
+            if (!(ScreenStack.CurrentScreen is IOsuScreen currentScreen)) return;
+
+            if (!((Drawable)currentScreen).IsLoaded || (currentScreen.AllowUserExit && !currentScreen.OnBackButton())) ScreenStack.Exit();
         }
 
         private void handleStartupImport()
@@ -1718,7 +1724,6 @@ namespace osu.Game
             // Bind to new screen.
             if (newScreen != null)
             {
-                backButtonVisibility.BindTo(newScreen.BackButtonVisibility);
                 OverlayActivationMode.BindTo(newScreen.OverlayActivationMode);
                 configUserActivity.BindTo(newScreen.Activity);
 
@@ -1730,19 +1735,41 @@ namespace osu.Game
                 else
                     Toolbar.Show();
 
+                var newOsuScreen = (OsuScreen)newScreen;
+
                 if (newScreen.ShowFooter)
                 {
+                    // the legacy back button should never display while the new footer is in use, as it
+                    // contains its own local back button.
+                    ((BindableBool)backButtonVisibility).Value = false;
+
                     BackButton.Hide();
-                    ScreenFooter.SetButtons(newScreen.CreateFooterButtons());
                     ScreenFooter.Show();
+
+                    if (newOsuScreen.IsLoaded)
+                        updateFooterButtons();
+                    else
+                        newOsuScreen.OnLoadComplete += _ => updateFooterButtons();
+
+                    void updateFooterButtons()
+                    {
+                        var buttons = newScreen.CreateFooterButtons();
+
+                        newOsuScreen.LoadComponentsAgainstScreenDependencies(buttons);
+
+                        ScreenFooter.SetButtons(buttons);
+                        ScreenFooter.Show();
+                    }
                 }
                 else
                 {
+                    backButtonVisibility.BindTo(newScreen.BackButtonVisibility);
+
                     ScreenFooter.SetButtons(Array.Empty<ScreenFooterButton>());
                     ScreenFooter.Hide();
                 }
 
-                skinEditor.SetTarget((OsuScreen)newScreen);
+                skinEditor.SetTarget(newOsuScreen);
             }
         }
 
