@@ -41,6 +41,8 @@ namespace osu.Game.Rulesets.Taiko.Mods
 
         [SettingSource("BPM Multiplier", "If the beatmap's BPM is double or half of what it sounds like, apply this to BPM before adding notes.")]
         public Bindable<BPMMultiplier> BeatmapBPMMultiplier { get; } = new Bindable<BPMMultiplier>(BPMMultiplier.Whole);
+        [SettingSource("Interpolate SV", "Have the added note interpolate the SV of the two notes it is between.")]
+        public Bindable<bool> InterpolateSV { get; } = new BindableBool();
         public void ApplyToBeatmap(IBeatmap beatmap)
         {
             var taikoBeatmap = (TaikoBeatmap)beatmap;
@@ -70,16 +72,45 @@ namespace osu.Game.Rulesets.Taiko.Mods
 
                     if (snapValue == baseRhythm && !currentNote.IsStrong && !nextNote.IsStrong && taikoHitObject is not Swell or DrumRoll)
                     {
+                        double time = currentNote.StartTime + (nextNote.StartTime - currentNote.StartTime) / 2;
                         //var noteSample = currentNote.Samples;
                         toAdd.Add(new Hit
                         {
-                            StartTime = currentNote.StartTime + (nextNote.StartTime - currentNote.StartTime) / 2,
+                            StartTime = time,
                             Samples = toCopy.Samples,
                             HitWindows = toCopy.HitWindows,
                             Type = InvertAddition.Value
                                 ? (toCopy.Type == HitType.Centre ? HitType.Rim : HitType.Centre)
                                 : toCopy.Type
                         });
+
+                        if (InterpolateSV.Value)
+                        {
+                            // Interpolate the SV between the two notes.
+                            var currentTimingPoint = controlPointInfo.EffectPointAt(currentNote.StartTime);
+                            var nextTimingPoint = controlPointInfo.EffectPointAt(nextNote.StartTime);
+                            var possibleRelevantPoint = controlPointInfo.EffectPointAt(time);
+
+                            if (currentTimingPoint == null || nextTimingPoint == null) continue;
+
+                            if (currentTimingPoint.ScrollSpeed == nextTimingPoint.ScrollSpeed) continue;
+
+
+                            double sv = (currentTimingPoint.ScrollSpeed + nextTimingPoint.ScrollSpeed) / 2;
+                            controlPointInfo.Add(time, new EffectControlPoint
+                            {
+                                ScrollSpeed = sv,
+                                Time = time,
+                                KiaiMode = possibleRelevantPoint.KiaiMode
+                            });
+
+                            controlPointInfo.Add(time + 0.01, new EffectControlPoint
+                            {
+                                ScrollSpeed = nextTimingPoint.ScrollSpeed,
+                                Time = time + 0.01,
+                                KiaiMode = nextTimingPoint.KiaiMode,
+                            });
+                        }
                     }
                 }
             }
