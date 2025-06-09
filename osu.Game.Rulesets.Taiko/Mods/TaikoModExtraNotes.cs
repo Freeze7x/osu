@@ -60,7 +60,7 @@ namespace osu.Game.Rulesets.Taiko.Mods
             if (OneHalfConversion.Value) conversions.Add(2);
             if (OneThirdConversion.Value) conversions.Add(3);
 
-            foreach (int baseRhythm in conversions)
+            foreach (int snapDivision in conversions)
             {
                 for (int i = 1; i < hits.Length; i++)
                 {
@@ -70,7 +70,7 @@ namespace osu.Game.Rulesets.Taiko.Mods
                     Hit toCopy = NoteSideToCopySetting.Value == NoteSideToCopy.Left ? currentNote : nextNote;
                     double snapValue = Math.Round(getSnapBetweenNotes(controlPointInfo, currentNote, nextNote) * 10) / 10; // Round to nearest 0.1 to avoid near misses.
 
-                    if (snapValue == baseRhythm && !currentNote.IsStrong && !nextNote.IsStrong && taikoHitObject is not Swell or DrumRoll)
+                    if (snapValue == snapDivision && !currentNote.IsStrong && !nextNote.IsStrong && taikoHitObject is not Swell or DrumRoll)
                     {
                         double time = currentNote.StartTime + (nextNote.StartTime - currentNote.StartTime) / 2;
                         //var noteSample = currentNote.Samples;
@@ -84,31 +84,32 @@ namespace osu.Game.Rulesets.Taiko.Mods
                                 : toCopy.Type
                         });
 
+                        // Interpolate the SV of the new hit object.
                         if (InterpolateSV.Value)
                         {
-                            // Interpolate the SV between the two notes.
-                            var currentTimingPoint = controlPointInfo.EffectPointAt(currentNote.StartTime);
-                            var nextTimingPoint = controlPointInfo.EffectPointAt(nextNote.StartTime);
-                            var possibleRelevantPoint = controlPointInfo.EffectPointAt(time);
+                            var leftTimingPoint = controlPointInfo.EffectPointAt(currentNote.StartTime); // Timing Point of the left Hit Object
+                            var rightTimingPoint = controlPointInfo.EffectPointAt(nextNote.StartTime); // Timing Point of the right Hit Object
+                            var relevantTimingPoint = controlPointInfo.EffectPointAt(time); // Timing Point of the new Hit Object in case there is a timing point at that time.
 
-                            if (currentTimingPoint == null || nextTimingPoint == null) continue;
+                            if (leftTimingPoint == null || rightTimingPoint == null) continue;
 
-                            if (currentTimingPoint.ScrollSpeed == nextTimingPoint.ScrollSpeed) continue;
+                            if (leftTimingPoint.ScrollSpeed == rightTimingPoint.ScrollSpeed) continue;
 
+                            double sv = (leftTimingPoint.ScrollSpeed + rightTimingPoint.ScrollSpeed) / 2;
 
-                            double sv = (currentTimingPoint.ScrollSpeed + nextTimingPoint.ScrollSpeed) / 2;
                             controlPointInfo.Add(time, new EffectControlPoint
                             {
                                 ScrollSpeed = sv,
-                                Time = time,
-                                KiaiMode = possibleRelevantPoint.KiaiMode
+                                KiaiMode = relevantTimingPoint.KiaiMode
                             });
 
-                            controlPointInfo.Add(time + 0.01, new EffectControlPoint
+                            // Don't add a "reset" timing point if unnecessary.
+                            if (relevantTimingPoint != rightTimingPoint) continue;
+
+                            controlPointInfo.Add(time + 0.001, new EffectControlPoint
                             {
-                                ScrollSpeed = nextTimingPoint.ScrollSpeed,
-                                Time = time + 0.01,
-                                KiaiMode = nextTimingPoint.KiaiMode,
+                                ScrollSpeed = rightTimingPoint.ScrollSpeed,
+                                KiaiMode = rightTimingPoint.KiaiMode,
                             });
                         }
                     }
@@ -122,7 +123,7 @@ namespace osu.Game.Rulesets.Taiko.Mods
         private double getSnapBetweenNotes(ControlPointInfo controlPointInfo, TaikoHitObject currentNote, TaikoHitObject nextNote)
         {
             var currentTimingPoint = controlPointInfo.TimingPointAt(currentNote.StartTime);
-            double beatLength = currentTimingPoint.BeatLength / (Math.Pow(2, (int)BeatmapBPMMultiplier.Value) / 2);
+            double beatLength = currentTimingPoint.BeatLength * (Math.Pow(2, (int)BeatmapBPMMultiplier.Value) / 2);
             double difference = nextNote.StartTime - currentNote.StartTime;
             return 1 / (difference / beatLength);
         }
